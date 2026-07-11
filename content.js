@@ -1,0 +1,461 @@
+(function() {
+  'use strict';
+
+  // ---------- CONFIG ----------
+  const DEBUG = false; // set true for verbose hotkey logs (then reload extension)
+  const HOTKEY_CHECK_INTERVAL_MS = 10000; // how often to ensure listeners (10s)
+  console.log("ELDAutoCheck extension LOADING at:", new Date().toISOString());
+
+  // Hotkey mapping (physical-key fallback + ukrainian/russian Cyrillic map)
+  // Physical keys: q,w,e,a,s,d,x,c,z -> mapped to tool titles
+  const KEY_TO_TITLE = {
+    q: 'Create',   // Q -> Create
+    w: 'Edit',     // W -> Edit
+    e: 'Shift',    // E -> Shift
+    a: 'Delete',   // A -> Delete
+    s: 'Bulk',     // S -> Bulk
+    d: 'Normalize',// D -> Normalize
+    x: 'Preview',  // X -> Preview (button text)
+    c: 'Save'      // C -> Save (button text)
+  };
+
+  // Keys that should still work while typing in input/textarea/contenteditable
+  const ALLOW_WHEN_TYPING = new Set(['x']); // allow Preview (x/ч) while typing
+
+  // Cyrillic fallback mapping: map Ukrainian/Russian letters to physical latin keys
+  const CYR_TO_LAT = {
+    'ф': 'a', 'Ф': 'a',   // ф -> A
+    'і': 's', 'І': 's',   // і -> S
+    'ы': 's', 'Ы': 's',   // ы -> S (Russian)
+    'в': 'd', 'В': 'd',   // в -> D
+    'а': 'f', 'А': 'f',   // (preserve if needed)
+    'й': 'q', 'Й': 'q',   // й -> Q
+    'ц': 'w', 'Ц': 'w',   // ц -> W
+    'у': 'e', 'У': 'e',   // у -> E
+    'я': 'z', 'Я': 'z',   // я -> Z (for transaction commit)
+    'ч': 'x', 'Ч': 'x',   // ч -> X (preview)
+    'с': 'c', 'С': 'c'    // с -> C (save)
+  };
+
+  // ---------- Utilities ----------
+  function debugLog(...args) { if (DEBUG) console.log('[ELDAutoCheck hotkeys]', ...args); }
+  function runWhenIdle(fn, timeout = 500) {
+    if (window.requestIdleCallback) {
+      try { requestIdleCallback(fn, { timeout }); return; } catch (e) {}
+    }
+    setTimeout(fn, 50);
+  }
+
+  function isElementVisible(el) {
+    if (!el) return false;
+    try {
+      const style = window.getComputedStyle(el);
+      return el.offsetParent !== null && style && style.display !== 'none' && style.visibility !== 'hidden' && !el.disabled;
+    } catch (e) {
+      return false;
+    }
+  }
+
+  // Attempt to simulate a more "user-like" click by dispatching a sequence of events.
+  // IMPORTANT: browsers do not allow creating events with isTrusted=true from script.
+  // If the page rejects synthetic events based on isTrusted, this cannot be bypassed programmatically.
+  function simulateUserClick(el) {
+    if (!el) return false;
+    try {
+      // ensure focusable
+      if (!el.hasAttribute('tabindex')) el.setAttribute('tabindex', '-1');
+      el.focus({ preventScroll: true });
+
+      // Dispatch pointer/mouse down events
+      try {
+        const pd = new PointerEvent('pointerdown', { bubbles: true, cancelable: true, view: window, pointerId: 1, isPrimary: true });
+        el.dispatchEvent(pd);
+      } catch (e) { /* ignore if not supported */ }
+
+      try {
+        const md = new MouseEvent('mousedown', { bubbles: true, cancelable: true, view: window });
+        el.dispatchEvent(md);
+      } catch (e) {}
+
+      // Instead of calling el.click() immediately (which can cause duplicate handlers),
+      // schedule mouseup+click after a short delay to simulate a single human click.
+      setTimeout(() => {
+        try {
+          const mu = new MouseEvent('mouseup', { bubbles: true, cancelable: true, view: window });
+          el.dispatchEvent(mu);
+          const cl = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+          el.dispatchEvent(cl);
+        } catch (e) {}
+      }, 80);
+
+      // Additionally, send Enter key events in case the UI listens for keyboard activation
+      setTimeout(() => {
+        try {
+          const kd = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true });
+          el.dispatchEvent(kd);
+          const ku = new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true });
+          el.dispatchEvent(ku);
+        } catch (e) {}
+      }, 140);
+
+      return true;
+    } catch (err) {
+      console.error('simulateUserClick error:', err);
+      return false;
+    }
+  }
+
+  // ---------- HOTKEYS ----------
+  let listenersAttached = false;
+  let ensureIntervalId = null;
+
+  function normalizeKeyFromEvent(e) {
+    // Prefer physical key code (layout-independent)
+    if (e && e.code && typeof e.code === 'string' && e.code.startsWith('Key')) {
+      return e.code.slice(3).toLowerCase();
+    }
+    // Fallback to character, map Cyrillic letters to Latin
+    if (e && e.key && typeof e.key === 'string') {
+      const k = e.key;
+      if (CYR_TO_LAT[k]) return CYR_TO_LAT[k];
+      if (/^[a-zA-Z]$/.test(k)) return k.toLowerCase();
+    }
+    return null;
+  }
+
+  function findButtonByTitle(title) {
+    if (!title) return null;
+    // 1) exact title match (case-insensitive)
+    const sel = 'button[title]';
+    const list = document.querySelectorAll(sel);
+    for (const b of list) {
+      const t = b.getAttribute('title') || '';
+      if (t.toLowerCase() === title.toLowerCase()) return b;
+    }
+    // 2) icon heuristics for known titles
+    const iconMap = {
+      create: ['fa-plus', 'fa-plus-circle'],
+      edit: ['fa-pencil', 'fa-pencil-alt'],
+      shift: ['fa-arrows-h', 'fa-arrows-alt-h'],
+      delete: ['fa-trash-o', 'fa-trash', 'fa-trash-o'],
+      bulk: ['fa-users'],
+      normalize: ['fa-magic']
+    };
+    const candidates = iconMap[title.toLowerCase()] || [];
+    for (const cls of candidates) {
+      const icon = document.querySelector('i.' + cls);
+      if (icon) {
+        const btn = icon.closest('button');
+        if (btn) return btn;
+      }
+    }
+    // 3) partial title match on attribute
+    for (const b of list) {
+      const t = b.getAttribute('title') || '';
+      if (t.toLowerCase().includes(title.toLowerCase())) return b;
+    }
+    return null;
+  }
+
+  function findButtonByText(text) {
+    if (!text) return null;
+    const buttons = Array.from(document.querySelectorAll('button'));
+    // exact match first (trimmed)
+    for (const b of buttons) {
+      const t = (b.textContent || '').trim();
+      if (t === text) return b;
+    }
+    // then case-insensitive exact
+    for (const b of buttons) {
+      const t = (b.textContent || '').trim();
+      if (t.toLowerCase() === text.toLowerCase()) return b;
+    }
+    // then includes
+    for (const b of buttons) {
+      const t = (b.textContent || '').trim();
+      if (t.toLowerCase().includes(text.toLowerCase())) return b;
+    }
+    return null;
+  }
+
+  function activateButtonForKey(key) {
+    const title = KEY_TO_TITLE[key.toLowerCase()];
+    if (!title) return false;
+    // Try title attribute / icon lookup
+    let btn = findButtonByTitle(title);
+    // If not found, try matching by button text
+    if (!btn) btn = findButtonByText(title);
+    if (!btn) { debugLog('Button not found for title/text', title); return false; }
+
+    // If this is the Preview action, only click if the preview button is visible
+    if (title.toLowerCase() === 'preview' && !isElementVisible(btn)) {
+      debugLog('Preview button found but not visible — not clicking');
+      return false;
+    }
+
+    // For preview, attempt a more user-like click sequence WITHOUT a synchronous fallback
+    if (title.toLowerCase() === 'preview') {
+      simulateUserClick(btn);
+      return true;
+    }
+
+    try {
+      btn.focus({ preventScroll: true });
+      btn.click();
+      // dispatch mouse events for apps that listen for them
+      ['mousedown', 'mouseup', 'click'].forEach(type => {
+        const ev = new MouseEvent(type, { bubbles: true, cancelable: true, view: window });
+        btn.dispatchEvent(ev);
+      });
+      debugLog('Activated', title, 'for key', key);
+      return true;
+    } catch (err) {
+      console.error('Hotkey activation error:', err);
+      return false;
+    }
+  }
+
+  function keyHandler(e) {
+    try {
+      if (e.isComposing) return;
+      if (e.ctrlKey || e.altKey || e.metaKey) return; // ignore combos
+      const t = e.target;
+      const k = normalizeKeyFromEvent(e);
+      if (!k) return;
+      if (e.repeat) return;
+
+      // If focus is inside an input/textarea/contentEditable and key is not allowed, ignore
+      if (t && (t.tagName === 'INPUT' || t.tagName === 'TEXTAREA' || t.isContentEditable)) {
+        if (!ALLOW_WHEN_TYPING.has(k)) return;
+        // else allow processing of this hotkey (e.g., Preview)
+      }
+
+      // Special hotkey: 'z' (or Ukrainian 'я') triggers transaction commit processing
+      if (k === 'z') {
+        debugLog('Z pressed -> triggering processTransaction (commit)');
+        e.preventDefault(); e.stopPropagation();
+        try { runWhenIdle(() => { if (typeof processTransaction === 'function') processTransaction(); else debugLog('processTransaction not defined yet'); }); } catch (err) { console.error('Error invoking processTransaction via hotkey:', err); }
+        return;
+      }
+
+      // Normal tool activations
+      if (!Object.prototype.hasOwnProperty.call(KEY_TO_TITLE, k)) return;
+
+      debugLog('Key pressed normalized:', k, 'raw key:', e.key, 'code:', e.code);
+      e.preventDefault(); e.stopPropagation();
+      const ok = activateButtonForKey(k);
+      if (!ok) debugLog('Activation failed for', k);
+    } catch (err) { console.error('Hotkey handler error:', err); }
+  }
+
+  function attachListeners() {
+    if (listenersAttached) return; listenersAttached = true;
+    window.addEventListener('keydown', keyHandler, true);
+    document.addEventListener('keydown', keyHandler, true);
+    try { (document.documentElement || document).addEventListener('keydown', keyHandler, true); } catch(e){}
+    debugLog('Hotkey listeners attached');
+  }
+
+  function detachListeners() {
+    if (!listenersAttached) return; listenersAttached = false;
+    window.removeEventListener('keydown', keyHandler, true);
+    document.removeEventListener('keydown', keyHandler, true);
+    try { (document.documentElement || document).removeEventListener('keydown', keyHandler, true); } catch(e){}
+    debugLog('Hotkey listeners detached');
+  }
+
+  function ensureListenersPeriodically() {
+    if (ensureIntervalId) return;
+    ensureIntervalId = setInterval(() => { if (!listenersAttached) { debugLog('Re-attaching hotkey listeners'); attachListeners(); } }, HOTKEY_CHECK_INTERVAL_MS);
+  }
+
+  if (window.top !== window) {
+    console.warn('ELDAutoCheck: running in iframe. If hotkeys fail, set "all_frames": true in manifest and include matches for the iframe URL.');
+  }
+
+  try { attachListeners(); ensureListenersPeriodically(); } catch (err) { console.error('Failed to attach hotkey listeners:', err); }
+  window.__activateButtonForKey = activateButtonForKey; window.__hotkeyMap = KEY_TO_TITLE; window.__simulateUserClick = simulateUserClick;
+
+  // ---------- ELDAutoCheck UI & AUTOMATION (optimized) ----------
+  let cachedSelectAllButton = null;
+  function findSelectAllButton() { if (cachedSelectAllButton && document.contains(cachedSelectAllButton)) return cachedSelectAllButton; cachedSelectAllButton = document.querySelector('button.btn.btn-info.btn-sm.mr-1'); return cachedSelectAllButton; }
+
+  function createButton() {
+    if (document.getElementById('myButton')) return;
+    const button = document.createElement('button');
+    button.id = 'myButton';
+    button.innerText = 'Auto-Check HOS';
+    Object.assign(button.style, { padding: '8px 16px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', marginRight: '5px' });
+
+    const clearSelectionButton = document.querySelector('button.btn.btn-warning.btn-sm.mr-1');
+    if (clearSelectionButton) clearSelectionButton.insertAdjacentElement('afterend', button); else document.body.appendChild(button);
+
+    button.addEventListener('click', () => {
+      const checkboxesToCheck = ['Generate Automatic Meta Data','Recreate Intermediate Events','Calculate Coordinates Based on Moving Events','Fix Certify Events','Fix Assigned and Fleet Edited Events','Auto-Check HOS'];
+      const selectAllButton = findSelectAllButton();
+      if (selectAllButton && selectAllButton.textContent.trim() === 'Select all') selectAllButton.click();
+
+      // schedule heavy work in idle time and batch it to avoid blocking
+      runWhenIdle(() => {
+        const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]'));
+        const tasks = [];
+        checkboxes.forEach((checkbox, index) => {
+          let labelText = '';
+          const label = checkbox.closest('div')?.querySelector('label') || document.querySelector(`label[for="${checkbox.id}"]`);
+          if (label) labelText = label.textContent.trim(); else labelText = checkbox.nextSibling ? checkbox.nextSibling.textContent.trim() : '';
+          const shouldCheck = checkboxesToCheck.some(text => labelText.includes(text));
+          if (shouldCheck && !checkbox.checked) tasks.push({checkbox, labelText});
+        });
+
+        // process in small batches
+        const BATCH = 20;
+        let i = 0;
+        function processBatch() {
+          const end = Math.min(i + BATCH, tasks.length);
+          for (; i < end; i++) {
+            const {checkbox, labelText} = tasks[i];
+            checkbox.focus();
+            const ev = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+            checkbox.dispatchEvent(ev);
+          }
+          if (i < tasks.length) setTimeout(processBatch, 50); // yield to main thread
+        }
+        processBatch();
+      });
+    });
+  }
+
+  function removeButton() { const b = document.getElementById('myButton'); if (b) b.remove(); }
+
+  // smarter detection: try to find a panel root that contains any of the known labels
+  const NORMALIZE_LABELS = ['Generate Automatic Meta Data','Recreate Intermediate Events','Calculate Coordinates Based on Moving Events','Fix Certify Events','Fix Assigned and Fleet Edited Events'];
+
+  function findNormalizePanelRoot() {
+    const allLabels = Array.from(document.querySelectorAll('label'));
+    for (const lbl of allLabels) {
+      const text = (lbl.textContent || '').trim();
+      if (NORMALIZE_LABELS.some(s => text.includes(s))) {
+        return lbl.closest('div')?.closest('.panel, .card, [role="region"], .container') || lbl.closest('div');
+      }
+    }
+    return null;
+  }
+
+  function isNormalizeToolVisible(root) {
+    const scope = root || document;
+    const boxes = scope.querySelectorAll ? scope.querySelectorAll('input[type="checkbox"]') : [];
+    for (const checkbox of boxes) {
+      const label = checkbox.closest('div')?.querySelector('label') || document.querySelector(`label[for="${checkbox.id}"]`);
+      const text = label ? (label.textContent || '').trim() : (checkbox.nextSibling ? (checkbox.nextSibling.textContent || '').trim() : '');
+      if (NORMALIZE_LABELS.some(s => text.includes(s))) return true;
+    }
+    return false;
+  }
+
+  // Debounced observer using requestIdleCallback fallback
+  function monitorNormalizeTool() {
+    let panelRoot = findNormalizePanelRoot() || document.body;
+    let scheduled = null;
+    const onMutations = () => {
+      if (scheduled) return; // debounce
+      const run = () => {
+        scheduled = null;
+        panelRoot = panelRoot && document.contains(panelRoot) ? panelRoot : (findNormalizePanelRoot() || document.body);
+        if (isNormalizeToolVisible(panelRoot)) createButton(); else removeButton();
+      };
+      if (window.requestIdleCallback) scheduled = requestIdleCallback(run, { timeout: 500 }); else scheduled = setTimeout(run, 200);
+    };
+
+    const observer = new MutationObserver(onMutations);
+    observer.observe(panelRoot === document.body ? document.body : panelRoot, { childList: true, subtree: panelRoot === document.body });
+    // initial check
+    onMutations();
+  }
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') monitorNormalizeTool(); else window.addEventListener('load', monitorNormalizeTool);
+
+  // ---------- Open Transaction listener (as before, now DOES NOT auto-run processing) ----------
+  function setupOpenTransactionListener() {
+    const observer = new MutationObserver(() => {
+      const openTransactionBtn = Array.from(document.querySelectorAll('button.btn.btn-success.ml-3.mb-2')).find(btn => btn.textContent.includes('Open Transaction'));
+      if (openTransactionBtn && !openTransactionBtn.dataset.listenerAdded) {
+        openTransactionBtn.dataset.listenerAdded = 'true';
+        openTransactionBtn.addEventListener('click', () => {
+          console.log("Open Transaction clicked, fast automation will run (Fix violations -> Save), but transaction processing will NOT run automatically. Press 'Z' (or 'Я') to process the transaction manually.");
+          // after opening transaction, perform fix violations -> save (as before), but do NOT call processTransaction automatically
+          waitAndClick('Fix violations', 'button.btn-sm.btn-tag', 100, () => {
+            waitAndClick('Save', 'button.btn-primary.btn-sm', 100, () => {
+              console.log('Save clicked — processing step will NOT auto-run. Use Z to trigger processTransaction.');
+            });
+          });
+        });
+      }
+    });
+    observer.observe(document.body, { childList: true, subtree: true });
+  }
+
+  // helper: click button when its text contains a substring
+  function waitAndClickContains(text, selector, interval = 100, timeout = 10000, callback = null) {
+    const start = Date.now();
+    const id = setInterval(() => {
+      const buttons = document.querySelectorAll(selector);
+      const target = Array.from(buttons).find(btn => (btn.textContent || '').trim().includes(text));
+      if (target) {
+        try { target.click(); } catch (e) { const ev = new MouseEvent('click', { bubbles: true, cancelable: true, view: window }); target.dispatchEvent(ev); }
+        clearInterval(id);
+        if (callback) callback();
+        return;
+      }
+      if (Date.now() - start > timeout) { clearInterval(id); console.warn('waitAndClickContains timeout for', text, selector); }
+    }, interval);
+  }
+
+  // existing waitAndClick kept for exact matches
+  function waitAndClick(text, selector, interval = 100, callback = null) {
+    const intervalId = setInterval(() => {
+      const buttons = document.querySelectorAll(selector);
+      const target = Array.from(buttons).find(btn => btn.textContent.trim() === text);
+      if (target) { target.click(); clearInterval(intervalId); if (callback) callback(); }
+    }, interval);
+  }
+
+  // New: processTransaction - clicks Processed then Skip (only when invoked manually by hotkey Z/Я)
+  function processTransaction() {
+    console.log('processTransaction: attempting to click Processed -> Skip');
+    // first click Processed (partial match to allow trailing spaces)
+    waitAndClickContains('Processed', 'button.btn.btn-success.ml-1.ng-star-inserted', 100, 5000, () => {
+      // Wait for Skip to appear after clicking Processed: poll for Skip up to timeout
+      const SKIP_DELAY_MS = 800; // increased delay before polling for Skip (ms)
+      setTimeout(() => {
+        const start = Date.now();
+        const pollInterval = 500; // how often to check for Skip
+        const timeout = 15000; // maximum wait for Skip
+        const poll = setInterval(() => {
+          const buttons = document.querySelectorAll('button.btn.btn-primary.btn-sm.mr-2');
+          const target = Array.from(buttons).find(btn => (btn.textContent || '').trim().includes('Skip'));
+          if (target) {
+            // ensure button is visible and enabled
+            const style = window.getComputedStyle(target);
+            const visible = target.offsetParent !== null && style && style.display !== 'none' && style.visibility !== 'hidden' && !target.disabled;
+            if (visible) {
+              try { target.click(); } catch (e) { const ev = new MouseEvent('click', { bubbles: true, cancelable: true, view: window }); target.dispatchEvent(ev); }
+              clearInterval(poll);
+              console.log('processTransaction: clicked Processed and then Skip');
+              return;
+            }
+          }
+          if (Date.now() - start > timeout) { clearInterval(poll); console.warn('processTransaction: timeout waiting for Skip'); }
+        }, pollInterval);
+      }, SKIP_DELAY_MS);
+    });
+  }
+
+  // expose processTransaction for console/testing
+  try { window.processTransaction = processTransaction; } catch(e){}
+
+  if (document.readyState === 'complete' || document.readyState === 'interactive') setupOpenTransactionListener(); else window.addEventListener('load', setupOpenTransactionListener);
+
+  // cleanup
+  window.addEventListener('unload', () => { detachListeners(); if (ensureIntervalId) { clearInterval(ensureIntervalId); ensureIntervalId = null; } });
+
+})();
