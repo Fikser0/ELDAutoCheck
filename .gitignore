@@ -18,6 +18,7 @@ package-lock.json
 *.zip
 *.crx
 *.pem
+web-ext-artifacts/
 
 # Logs
 *.log
