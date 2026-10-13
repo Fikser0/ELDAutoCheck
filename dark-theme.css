@@ -1,48 +1,166 @@
 /* ==========================================================================
    ELDAutoCheck - TrendyELD Smart Dark Theme
-   Algorithmic dark mode replicating Chrome's "Automatic Dark Mode"
+   High-contrast dark mode with color preservation for Firefox, Edge & Chrome
    ========================================================================== */
 
-html {
+/* 1. Base dark canvas on html to prevent light bleed / Firefox canvas bug */
+html.eld-dark-theme {
   background-color: #121212 !important;
-  filter: invert(90%) hue-rotate(180deg) !important;
   color-scheme: dark !important;
+  scrollbar-color: #52525b #18181b;
 }
 
-body {
+/* 2. Inversion filter on body */
+html.eld-dark-theme body {
   background-color: #ffffff !important;
+  filter: invert(90%) hue-rotate(180deg) !important;
+  min-height: 100vh;
 }
 
-/* Re-invert photos, videos, and avatars so they remain in their original colors */
-img,
-video,
-picture,
-embed,
-object,
-.user-avatar,
-.avatar,
-.driver-photo {
+/* 3. Re-invert media (photos, avatars, videos) so they display in true color */
+html.eld-dark-theme img,
+html.eld-dark-theme video,
+html.eld-dark-theme picture,
+html.eld-dark-theme embed,
+html.eld-dark-theme object,
+html.eld-dark-theme .user-avatar,
+html.eld-dark-theme .avatar,
+html.eld-dark-theme .driver-photo {
   filter: invert(100%) hue-rotate(180deg) !important;
 }
 
-/* Re-invert the ELDAutoCheck injected button so its green background and white text stay crisp */
-#myButton {
+/* 4. Action buttons: maintain true semantic colors (Green, Red, Yellow, Blue, Info) */
+html.eld-dark-theme .btn-success,
+html.eld-dark-theme button.btn-success,
+html.eld-dark-theme .btn-danger,
+html.eld-dark-theme button.btn-danger,
+html.eld-dark-theme .btn-warning,
+html.eld-dark-theme button.btn-warning,
+html.eld-dark-theme .btn-primary,
+html.eld-dark-theme button.btn-primary,
+html.eld-dark-theme .btn-info,
+html.eld-dark-theme button.btn-info,
+html.eld-dark-theme #myButton {
   filter: invert(100%) hue-rotate(180deg) !important;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
 }
 
-/* Modern dark scrollbars */
-::-webkit-scrollbar {
+/* 5. Prevent double inversion on icons/images nested inside re-inverted buttons */
+html.eld-dark-theme .btn-success img,
+html.eld-dark-theme .btn-danger img,
+html.eld-dark-theme .btn-warning img,
+html.eld-dark-theme .btn-primary img,
+html.eld-dark-theme .btn-info img,
+html.eld-dark-theme #myButton img,
+html.eld-dark-theme .btn-success svg,
+html.eld-dark-theme .btn-danger svg,
+html.eld-dark-theme .btn-warning svg,
+html.eld-dark-theme .btn-primary svg,
+html.eld-dark-theme .btn-info svg,
+html.eld-dark-theme #myButton svg {
+  filter: none !important;
+}
+
+/* 6. Status badges, tags, and alert notices */
+html.eld-dark-theme .badge,
+html.eld-dark-theme .badge-success,
+html.eld-dark-theme .badge-danger,
+html.eld-dark-theme .badge-warning,
+html.eld-dark-theme .badge-info,
+html.eld-dark-theme .badge-primary,
+html.eld-dark-theme .label,
+html.eld-dark-theme .label-success,
+html.eld-dark-theme .label-danger,
+html.eld-dark-theme .label-warning,
+html.eld-dark-theme .label-info,
+html.eld-dark-theme .label-primary,
+html.eld-dark-theme .btn-tag,
+html.eld-dark-theme .alert,
+html.eld-dark-theme .alert-success,
+html.eld-dark-theme .alert-danger,
+html.eld-dark-theme .alert-warning,
+html.eld-dark-theme .alert-info,
+html.eld-dark-theme .status-badge {
+  filter: invert(100%) hue-rotate(180deg) !important;
+}
+
+/* 7. Maps & external canvas charts */
+html.eld-dark-theme .leaflet-container,
+html.eld-dark-theme .mapboxgl-map,
+html.eld-dark-theme .gm-style {
+  filter: invert(100%) hue-rotate(180deg) !important;
+}
+
+/* 8. Modals, Confirm Dialogs & Backdrop */
+html.eld-dark-theme .modal-backdrop,
+html.eld-dark-theme .modal-backdrop.show,
+html.eld-dark-theme .modal-backdrop.in {
+  background-color: #ffffff !important;
+  opacity: 0.35 !important;
+}
+
+html.eld-dark-theme .modal-dialog,
+html.eld-dark-theme .modal-content,
+html.eld-dark-theme app-confirm-modal {
+  border-radius: 8px !important;
+}
+
+html.eld-dark-theme .modal-content {
+  background-color: #d8d8db !important;
+  border: 1px solid #9ca3af !important;
+  box-shadow: 0 20px 50px rgba(255, 255, 255, 0.4) !important;
+}
+
+html.eld-dark-theme .modal-header {
+  background-color: #e5e5e8 !important;
+  border-bottom: 1px solid #9ca3af !important;
+  padding: 12px 16px !important;
+}
+
+html.eld-dark-theme .modal-header .modal-title,
+html.eld-dark-theme .modal-header h4,
+html.eld-dark-theme .modal-header h5 {
+  color: #000000 !important;
+  font-weight: 700 !important;
+  margin: 0 !important;
+}
+
+html.eld-dark-theme .modal-body {
+  background-color: #d8d8db !important;
+  color: #000000 !important;
+  padding: 18px 16px !important;
+}
+
+html.eld-dark-theme .modal-body div,
+html.eld-dark-theme .modal-body p {
+  color: #000000 !important;
+}
+
+html.eld-dark-theme .modal-footer {
+  background-color: #e5e5e8 !important;
+  border-top: 1px solid #9ca3af !important;
+  padding: 12px 16px !important;
+}
+
+html.eld-dark-theme .close,
+html.eld-dark-theme .btn-close {
+  color: #000000 !important;
+  text-shadow: none !important;
+  opacity: 0.8 !important;
+}
+
+/* 9. Modern dark scrollbars (Firefox & WebKit/Blink) */
+html.eld-dark-theme ::-webkit-scrollbar {
   width: 10px;
   height: 10px;
 }
-::-webkit-scrollbar-track {
+html.eld-dark-theme ::-webkit-scrollbar-track {
   background: #18181b;
 }
-::-webkit-scrollbar-thumb {
+html.eld-dark-theme ::-webkit-scrollbar-thumb {
   background: #3f3f46;
   border-radius: 5px;
 }
-::-webkit-scrollbar-thumb:hover {
+html.eld-dark-theme ::-webkit-scrollbar-thumb:hover {
   background: #52525b;
 }

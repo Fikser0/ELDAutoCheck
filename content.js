@@ -1,6 +1,82 @@
 (function() {
   'use strict';
 
+  // ---------- DARK THEME ----------
+  const THEME_STORAGE_KEY = 'eld_dark_theme';
+
+  function isDarkThemeEnabled() {
+    try {
+      const val = localStorage.getItem(THEME_STORAGE_KEY);
+      return val === null ? true : val === 'true';
+    } catch (e) {
+      return true;
+    }
+  }
+
+  function applyDarkTheme(enabled) {
+    const root = document.documentElement;
+    if (root) {
+      if (enabled) {
+        root.classList.add('eld-dark-theme');
+      } else {
+        root.classList.remove('eld-dark-theme');
+      }
+    }
+  }
+
+  function showThemeToast(enabled) {
+    try {
+      let toast = document.getElementById('eld-theme-toast');
+      if (!toast) {
+        toast = document.createElement('div');
+        toast.id = 'eld-theme-toast';
+        Object.assign(toast.style, {
+          position: 'fixed',
+          bottom: '20px',
+          right: '20px',
+          padding: '8px 16px',
+          borderRadius: '6px',
+          fontFamily: 'system-ui, -apple-system, sans-serif',
+          fontSize: '13px',
+          fontWeight: '600',
+          zIndex: '999999',
+          boxShadow: '0 4px 12px rgba(0,0,0,0.3)',
+          transition: 'opacity 0.25s ease, transform 0.25s ease',
+          pointerEvents: 'none'
+        });
+        (document.body || document.documentElement).appendChild(toast);
+      }
+      toast.textContent = enabled ? '🌙 Dark Mode: ON' : '☀️ Dark Mode: OFF';
+      toast.style.backgroundColor = enabled ? '#27272a' : '#f4f4f5';
+      toast.style.color = enabled ? '#fafafa' : '#18181b';
+      toast.style.border = enabled ? '1px solid #3f3f46' : '1px solid #d4d4d8';
+      toast.style.opacity = '1';
+      toast.style.transform = 'translateY(0)';
+
+      if (toast._timer) clearTimeout(toast._timer);
+      toast._timer = setTimeout(() => {
+        toast.style.opacity = '0';
+        toast.style.transform = 'translateY(8px)';
+      }, 1500);
+    } catch (e) {}
+  }
+
+  function toggleDarkTheme() {
+    const nextState = !isDarkThemeEnabled();
+    try {
+      localStorage.setItem(THEME_STORAGE_KEY, String(nextState));
+    } catch (e) {}
+    applyDarkTheme(nextState);
+    showThemeToast(nextState);
+    console.log('[ELDAutoCheck] Dark theme:', nextState ? 'ENABLED' : 'DISABLED');
+  }
+
+  // Initialize immediately on document start to eliminate FOUC / white flash
+  applyDarkTheme(isDarkThemeEnabled());
+  if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', () => applyDarkTheme(isDarkThemeEnabled()), { once: true });
+  }
+
   // ---------- CONFIG ----------
   const DEBUG = false; // set true for verbose hotkey logs (then reload extension)
   const HOTKEY_CHECK_INTERVAL_MS = 10000; // how often to ensure listeners (10s)
@@ -218,6 +294,18 @@
   function keyHandler(e) {
     try {
       if (e.isComposing) return;
+
+      // Dark Theme Toggle hotkey: Alt+T / Alt+Е
+      if (e.altKey && !e.ctrlKey && !e.metaKey) {
+        const isTKey = e.code === 'KeyT' || (e.key && (e.key.toLowerCase() === 't' || e.key.toLowerCase() === 'е'));
+        if (isTKey) {
+          e.preventDefault();
+          e.stopPropagation();
+          toggleDarkTheme();
+          return;
+        }
+      }
+
       if (e.ctrlKey || e.altKey || e.metaKey) return; // ignore combos
       const t = e.target;
       const k = normalizeKeyFromEvent(e);
@@ -274,7 +362,7 @@
   }
 
   try { attachListeners(); ensureListenersPeriodically(); } catch (err) { console.error('Failed to attach hotkey listeners:', err); }
-  window.__activateButtonForKey = activateButtonForKey; window.__hotkeyMap = KEY_TO_TITLE; window.__simulateUserClick = simulateUserClick;
+  window.__activateButtonForKey = activateButtonForKey; window.__hotkeyMap = KEY_TO_TITLE; window.__simulateUserClick = simulateUserClick; window.__toggleDarkTheme = toggleDarkTheme; window.__isDarkThemeEnabled = isDarkThemeEnabled;
 
   // ---------- ELDAutoCheck UI & AUTOMATION (optimized) ----------
   let cachedSelectAllButton = null;
@@ -372,7 +460,19 @@
     onMutations();
   }
 
-  if (document.readyState === 'complete' || document.readyState === 'interactive') monitorNormalizeTool(); else window.addEventListener('load', monitorNormalizeTool);
+  let normalizeMonitored = false;
+  function startNormalizeMonitoring() {
+    if (normalizeMonitored) return;
+    if (!document.body) return;
+    normalizeMonitored = true;
+    monitorNormalizeTool();
+  }
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    startNormalizeMonitoring();
+  } else {
+    document.addEventListener('DOMContentLoaded', startNormalizeMonitoring, { once: true });
+    window.addEventListener('load', startNormalizeMonitoring, { once: true });
+  }
 
   // ---------- Open Transaction listener (as before, now DOES NOT auto-run processing) ----------
   function setupOpenTransactionListener() {
@@ -453,7 +553,19 @@
   // expose processTransaction for console/testing
   try { window.processTransaction = processTransaction; } catch(e){}
 
-  if (document.readyState === 'complete' || document.readyState === 'interactive') setupOpenTransactionListener(); else window.addEventListener('load', setupOpenTransactionListener);
+  let openTransactionSetup = false;
+  function startOpenTransactionListener() {
+    if (openTransactionSetup) return;
+    if (!document.body) return;
+    openTransactionSetup = true;
+    setupOpenTransactionListener();
+  }
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    startOpenTransactionListener();
+  } else {
+    document.addEventListener('DOMContentLoaded', startOpenTransactionListener, { once: true });
+    window.addEventListener('load', startOpenTransactionListener, { once: true });
+  }
 
   // cleanup
   window.addEventListener('unload', () => { detachListeners(); if (ensureIntervalId) { clearInterval(ensureIntervalId); ensureIntervalId = null; } });

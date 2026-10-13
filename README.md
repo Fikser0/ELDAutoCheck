@@ -6,7 +6,8 @@ A Chrome extension that automates HOS compliance workflows on [TrendyELD](https:
 
 ### Features
 
-- **Modern Dark Theme** — sleek, deep-dark interface across trendyeld.com with zero-flash loading, dark tables, cards, dialogs, inputs, and preserved ELD status indicator colors
+- **Modern Dark Theme** — sleek, deep-dark interface across trendyeld.com with zero-flash loading, dark tables, cards, dialogs, inputs, preserved ELD status indicator colors, and `Alt + T` toggle shortcut
+- **Cross-Browser Support** — runs natively in Firefox, Edge, and Chrome (Manifest V3)
 - **One-click auto-check** — selects all standard normalization checkboxes (metadata, intermediate events, coordinates, certify fixes, etc.)
 - **Keyboard hotkeys** — full shortcut support for every tool, works on both Latin and Cyrillic layouts
 - **Transaction flow** — automates Open Transaction → Fix Violations → Save; press `Z` to commit
@@ -23,7 +24,7 @@ A Chrome extension that automates HOS compliance workflows on [TrendyELD](https:
 | `W` | Edit | `D` | Normalize |
 | `E` | Shift | `X` | Preview |
 | `A` | Delete | `C` | Save |
-| | | `Z` | Process Transaction |
+| `Z` | Process Transaction | `Alt + T` | Toggle Dark Theme |
 
 Cyrillic layouts are mapped to the same physical keys.
 
@@ -31,13 +32,15 @@ Cyrillic layouts are mapped to the same physical keys.
 
 ### Install
 
-1. Clone the repo
-   ```
-   git clone https://github.com/Fikser0/ELDAutoCheck.git
-   ```
-2. Open `chrome://extensions` and enable **Developer mode**
-3. Click **Load unpacked** and select the `ELDAutoCheck` folder
-4. Navigate to [trendyeld.com](https://trendyeld.com) — the extension activates automatically
+#### Chrome / Edge:
+1. Open `chrome://extensions` (or `edge://extensions`) and enable **Developer mode**
+2. Click **Load unpacked** and select the `ELDAutoCheck` folder
+3. Navigate to [trendyeld.com](https://trendyeld.com)
+
+#### Firefox:
+1. Open `about:debugging#/runtime/this-firefox`
+2. Click **Load Temporary Add-on...** and select `manifest.json`
+3. Navigate to [trendyeld.com](https://trendyeld.com)
 
 ---
 

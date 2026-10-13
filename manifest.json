@@ -1,12 +1,18 @@
 {
   "manifest_version": 3,
   "name": "ELDAutoCheck",
-  "version": "1.4",
+  "version": "1.5",
   "description": "Automatically checks common HOS checkboxes to save time and adds a sleek dark theme.",
   "icons": {
     "16": "icons/icon16.png",
     "48": "icons/icon48.png",
     "128": "icons/icon128.png"
+  },
+  "browser_specific_settings": {
+    "gecko": {
+      "id": "eldautocheck@fikser0.github.io",
+      "strict_min_version": "109.0"
+    }
   },
   "permissions": ["activeTab", "scripting"],
   "host_permissions": [
@@ -16,13 +22,8 @@
     {
       "matches": ["https://trendyeld.com/*", "https://beta.trendyeld.com/*"],
       "css": ["dark-theme.css"],
-      "run_at": "document_start",
-      "all_frames": false
-    },
-    {
-      "matches": ["https://trendyeld.com/*", "https://beta.trendyeld.com/*"],
       "js": ["content.js"],
-      "run_at": "document_end",
+      "run_at": "document_start",
       "all_frames": false
     }
   ],
