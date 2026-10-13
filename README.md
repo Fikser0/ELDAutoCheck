@@ -6,6 +6,7 @@ A Chrome extension that automates HOS compliance workflows on [TrendyELD](https:
 
 ### Features
 
+- **Modern Dark Theme** — sleek, deep-dark interface across trendyeld.com with zero-flash loading, dark tables, cards, dialogs, inputs, and preserved ELD status indicator colors
 - **One-click auto-check** — selects all standard normalization checkboxes (metadata, intermediate events, coordinates, certify fixes, etc.)
 - **Keyboard hotkeys** — full shortcut support for every tool, works on both Latin and Cyrillic layouts
 - **Transaction flow** — automates Open Transaction → Fix Violations → Save; press `Z` to commit
@@ -46,6 +47,7 @@ Cyrillic layouts are mapped to the same physical keys.
 ELDAutoCheck/
 ├── manifest.json     Chrome extension manifest (MV3)
 ├── content.js        Hotkeys, automation, UI injection
+├── dark-theme.css    Deep dark theme stylesheet
 └── assets/           Images
 ```
 

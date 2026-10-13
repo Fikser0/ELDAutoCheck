@@ -1,0 +1,425 @@
+/* ==========================================================================
+   ELDAutoCheck - TrendyELD Dark Theme
+   A modern deep-dark theme crafted for trendyeld.com & beta.trendyeld.com
+   ========================================================================== */
+
+:root {
+  --eld-dark-bg: #121212;
+  --eld-dark-surface: #1e1e1e;
+  --eld-dark-surface-elevated: #262626;
+  --eld-dark-surface-hover: #323232;
+  --eld-dark-border: #383838;
+  --eld-dark-border-subtle: #2d2d2d;
+  --eld-dark-text-primary: #e4e4e7;
+  --eld-dark-text-secondary: #a1a1aa;
+  --eld-dark-text-muted: #71717a;
+  --eld-dark-link: #60a5fa;
+  --eld-dark-link-hover: #93c5fd;
+  --eld-dark-input-bg: #202022;
+  --eld-dark-input-border: #444448;
+  --eld-dark-input-focus: #3b82f6;
+  --eld-dark-table-stripe: #18181b;
+  --eld-dark-table-hover: #27272a;
+}
+
+/* Base page & document colors */
+html,
+body {
+  background-color: var(--eld-dark-bg) !important;
+  color: var(--eld-dark-text-primary) !important;
+  scrollbar-color: #52525b var(--eld-dark-bg);
+}
+
+/* Custom modern scrollbars */
+::-webkit-scrollbar {
+  width: 10px;
+  height: 10px;
+}
+::-webkit-scrollbar-track {
+  background: var(--eld-dark-bg);
+}
+::-webkit-scrollbar-thumb {
+  background: #3f3f46;
+  border-radius: 5px;
+  border: 2px solid var(--eld-dark-bg);
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #52525b;
+}
+
+/* Layout containers, wrappers, panels and cards */
+.wrapper,
+.content-wrapper,
+.main-content,
+.container,
+.container-fluid,
+.panel,
+.card,
+.card-body,
+.card-header,
+.card-footer,
+.panel-default,
+.panel-body,
+.panel-heading,
+.panel-footer,
+.well,
+.box,
+.box-body,
+.box-header,
+.box-footer,
+[role="region"] {
+  background-color: var(--eld-dark-surface) !important;
+  color: var(--eld-dark-text-primary) !important;
+  border-color: var(--eld-dark-border) !important;
+  box-shadow: none !important;
+}
+
+.card-header,
+.panel-heading,
+.box-header {
+  background-color: var(--eld-dark-surface-elevated) !important;
+  border-bottom-color: var(--eld-dark-border) !important;
+}
+
+/* Angular component containers */
+app-root,
+router-outlet + *,
+ng-component {
+  background-color: var(--eld-dark-bg) !important;
+}
+
+/* Typography & Headings */
+h1, h2, h3, h4, h5, h6,
+.h1, .h2, .h3, .h4, .h5, .h6 {
+  color: #f4f4f5 !important;
+}
+
+p, span, label, div, small {
+  color: inherit;
+}
+
+.text-muted {
+  color: var(--eld-dark-text-muted) !important;
+}
+
+.text-secondary {
+  color: var(--eld-dark-text-secondary) !important;
+}
+
+a {
+  color: var(--eld-dark-link) !important;
+}
+a:hover, a:focus {
+  color: var(--eld-dark-link-hover) !important;
+}
+
+/* Header, Navbar, Sidebar & Navigation */
+header,
+nav,
+.navbar,
+.navbar-default,
+.navbar-inverse,
+.main-header,
+.sidebar,
+.main-sidebar,
+.sidebar-menu,
+.nav-tabs,
+.nav-pills,
+.breadcrumb {
+  background-color: var(--eld-dark-surface) !important;
+  border-color: var(--eld-dark-border) !important;
+  color: var(--eld-dark-text-primary) !important;
+}
+
+.nav-tabs > li.active > a,
+.nav-tabs > li.active > a:hover,
+.nav-tabs > li.active > a:focus,
+.nav-tabs .nav-link.active {
+  background-color: var(--eld-dark-surface-elevated) !important;
+  border-color: var(--eld-dark-border) var(--eld-dark-border) transparent !important;
+  color: #ffffff !important;
+}
+
+.nav-tabs {
+  border-bottom-color: var(--eld-dark-border) !important;
+}
+
+.nav-link,
+.navbar-nav > li > a {
+  color: var(--eld-dark-text-secondary) !important;
+}
+.nav-link:hover,
+.navbar-nav > li > a:hover {
+  background-color: var(--eld-dark-surface-hover) !important;
+  color: #ffffff !important;
+}
+
+/* Dropdown menus */
+.dropdown-menu {
+  background-color: var(--eld-dark-surface-elevated) !important;
+  border-color: var(--eld-dark-border) !important;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.5) !important;
+}
+.dropdown-menu > li > a,
+.dropdown-item {
+  color: var(--eld-dark-text-primary) !important;
+}
+.dropdown-menu > li > a:hover,
+.dropdown-menu > li > a:focus,
+.dropdown-item:hover,
+.dropdown-item:focus {
+  background-color: var(--eld-dark-surface-hover) !important;
+  color: #ffffff !important;
+}
+.dropdown-divider {
+  border-top-color: var(--eld-dark-border) !important;
+}
+
+/* Forms, Inputs, Selects, Textareas */
+input[type="text"],
+input[type="password"],
+input[type="email"],
+input[type="number"],
+input[type="search"],
+input[type="date"],
+input[type="time"],
+input[type="datetime-local"],
+select,
+textarea,
+.form-control {
+  background-color: var(--eld-dark-input-bg) !important;
+  color: #ffffff !important;
+  border: 1px solid var(--eld-dark-input-border) !important;
+  box-shadow: none !important;
+}
+
+input[type="text"]:focus,
+input[type="password"]:focus,
+input[type="email"]:focus,
+input[type="number"]:focus,
+input[type="search"]:focus,
+input[type="date"]:focus,
+input[type="time"]:focus,
+input[type="datetime-local"]:focus,
+select:focus,
+textarea:focus,
+.form-control:focus {
+  background-color: var(--eld-dark-input-bg) !important;
+  border-color: var(--eld-dark-input-focus) !important;
+  color: #ffffff !important;
+  outline: none !important;
+  box-shadow: 0 0 0 2px rgba(59, 130, 246, 0.3) !important;
+}
+
+input[disabled],
+select[disabled],
+textarea[disabled],
+.form-control:disabled,
+.form-control[readonly] {
+  background-color: #1a1a1c !important;
+  color: var(--eld-dark-text-muted) !important;
+  border-color: var(--eld-dark-border-subtle) !important;
+}
+
+::placeholder {
+  color: var(--eld-dark-text-muted) !important;
+  opacity: 1 !important;
+}
+
+/* Checkboxes & Radios */
+input[type="checkbox"],
+input[type="radio"] {
+  accent-color: #3b82f6;
+  filter: brightness(0.85);
+}
+
+/* Tables, Data Grids & ELD Log Tables */
+table,
+.table {
+  background-color: var(--eld-dark-surface) !important;
+  color: var(--eld-dark-text-primary) !important;
+  border-color: var(--eld-dark-border) !important;
+}
+
+.table th,
+.table td,
+table th,
+table td {
+  border-color: var(--eld-dark-border) !important;
+  background-color: transparent;
+}
+
+.table thead th,
+table thead th {
+  background-color: var(--eld-dark-surface-elevated) !important;
+  color: #f4f4f5 !important;
+  border-bottom: 2px solid var(--eld-dark-border) !important;
+}
+
+.table-striped > tbody > tr:nth-of-type(odd),
+.table-striped tbody tr:nth-of-type(odd) {
+  background-color: var(--eld-dark-table-stripe) !important;
+}
+
+.table-hover > tbody > tr:hover,
+.table-hover tbody tr:hover,
+table tbody tr:hover {
+  background-color: var(--eld-dark-table-hover) !important;
+}
+
+.table-bordered,
+.table-bordered > thead > tr > th,
+.table-bordered > tbody > tr > th,
+.table-bordered > tfoot > tr > th,
+.table-bordered > thead > tr > td,
+.table-bordered > tbody > tr > td,
+.table-bordered > tfoot > tr > td {
+  border-color: var(--eld-dark-border) !important;
+}
+
+/* Modals & Dialogs */
+.modal-content {
+  background-color: var(--eld-dark-surface) !important;
+  color: var(--eld-dark-text-primary) !important;
+  border: 1px solid var(--eld-dark-border) !important;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.7) !important;
+}
+
+.modal-header {
+  background-color: var(--eld-dark-surface-elevated) !important;
+  border-bottom: 1px solid var(--eld-dark-border) !important;
+}
+
+.modal-footer {
+  background-color: var(--eld-dark-surface-elevated) !important;
+  border-top: 1px solid var(--eld-dark-border) !important;
+}
+
+.modal-backdrop {
+  background-color: #000000 !important;
+  opacity: 0.7 !important;
+}
+
+.close {
+  color: var(--eld-dark-text-primary) !important;
+  text-shadow: none !important;
+  opacity: 0.8 !important;
+}
+.close:hover {
+  color: #ffffff !important;
+  opacity: 1 !important;
+}
+
+/* Buttons styling with dark enhancement */
+.btn-default,
+.btn-light,
+.btn-secondary {
+  background-color: var(--eld-dark-surface-elevated) !important;
+  color: var(--eld-dark-text-primary) !important;
+  border-color: var(--eld-dark-border) !important;
+}
+
+.btn-default:hover,
+.btn-light:hover,
+.btn-secondary:hover {
+  background-color: var(--eld-dark-surface-hover) !important;
+  color: #ffffff !important;
+  border-color: #4a4a4a !important;
+}
+
+/* Preserve semantic statuses with vibrant dark contrast */
+.btn-primary {
+  background-color: #2563eb !important;
+  border-color: #1d4ed8 !important;
+  color: #ffffff !important;
+}
+.btn-primary:hover {
+  background-color: #1d4ed8 !important;
+}
+
+.btn-success {
+  background-color: #16a34a !important;
+  border-color: #15803d !important;
+  color: #ffffff !important;
+}
+.btn-success:hover {
+  background-color: #15803d !important;
+}
+
+.btn-warning {
+  background-color: #d97706 !important;
+  border-color: #b45309 !important;
+  color: #ffffff !important;
+}
+.btn-warning:hover {
+  background-color: #b45309 !important;
+}
+
+.btn-danger {
+  background-color: #dc2626 !important;
+  border-color: #b91c1c !important;
+  color: #ffffff !important;
+}
+.btn-danger:hover {
+  background-color: #b91c1c !important;
+}
+
+.btn-info {
+  background-color: #0284c7 !important;
+  border-color: #0369a1 !important;
+  color: #ffffff !important;
+}
+.btn-info:hover {
+  background-color: #0369a1 !important;
+}
+
+/* Status Badges, Labels & Alert Boxes */
+.badge,
+.label {
+  text-shadow: none !important;
+  font-weight: 600;
+}
+
+.alert {
+  border-width: 1px !important;
+}
+.alert-success {
+  background-color: rgba(22, 163, 74, 0.2) !important;
+  border-color: #16a34a !important;
+  color: #86efac !important;
+}
+.alert-warning {
+  background-color: rgba(217, 119, 6, 0.2) !important;
+  border-color: #d97706 !important;
+  color: #fde047 !important;
+}
+.alert-danger {
+  background-color: rgba(220, 38, 38, 0.2) !important;
+  border-color: #dc2626 !important;
+  color: #fca5a5 !important;
+}
+.alert-info {
+  background-color: rgba(2, 132, 199, 0.2) !important;
+  border-color: #0284c7 !important;
+  color: #93c5fd !important;
+}
+
+/* ELD Log Charts, Maps & Canvas Protection */
+/* Do NOT invert or wash out canvas charts, SVGs, or map viewports */
+canvas,
+svg:not(.icon):not(.fa),
+.leaflet-container,
+.mapboxgl-map,
+.gm-style {
+  background-color: transparent;
+  filter: none !important;
+}
+
+/* Custom Injected ELDAutoCheck Button */
+#myButton {
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.4) !important;
+  transition: background-color 0.15s ease, transform 0.1s ease !important;
+}
+#myButton:hover {
+  background-color: #388e3c !important;
+}
