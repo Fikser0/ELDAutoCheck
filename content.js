@@ -477,15 +477,14 @@
   // ---------- Open Transaction listener (as before, now DOES NOT auto-run processing) ----------
   function setupOpenTransactionListener() {
     const observer = new MutationObserver(() => {
-      const openTransactionBtn = Array.from(document.querySelectorAll('button.btn.btn-success.ml-3.mb-2')).find(btn => btn.textContent.includes('Open Transaction'));
+      const openTransactionBtn = Array.from(document.querySelectorAll('button.btn-success, button.btn')).find(btn => (btn.textContent || '').includes('Open Transaction'));
       if (openTransactionBtn && !openTransactionBtn.dataset.listenerAdded) {
         openTransactionBtn.dataset.listenerAdded = 'true';
         openTransactionBtn.addEventListener('click', () => {
-          console.log("Open Transaction clicked, fast automation will run (Fix violations -> Save), but transaction processing will NOT run automatically. Press 'Z' (or 'Я') to process the transaction manually.");
-          // after opening transaction, perform fix violations -> save (as before), but do NOT call processTransaction automatically
-          waitAndClick('Fix violations', 'button.btn-sm.btn-tag', 100, () => {
-            waitAndClick('Save', 'button.btn-primary.btn-sm', 100, () => {
-              console.log('Save clicked — processing step will NOT auto-run. Use Z to trigger processTransaction.');
+          console.log("Open Transaction clicked, checking for Fix violations -> Save modal...");
+          waitAndClickContains('Fix violations', 'button.btn-tag, button.btn-sm', 100, 5000, () => {
+            waitAndClickContains('Save', 'button.btn-primary', 100, 5000, () => {
+              console.log('Save clicked in violations modal.');
             });
           });
         });
