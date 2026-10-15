@@ -1,7 +1,7 @@
 {
   "manifest_version": 3,
   "name": "ELDAutoCheck",
-  "version": "1.5.2",
+  "version": "1.5.3",
   "description": "Automatically checks common HOS checkboxes to save time and adds a sleek dark theme.",
   "icons": {
     "16": "icons/icon16.png",
