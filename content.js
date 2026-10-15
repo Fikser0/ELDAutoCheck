@@ -365,73 +365,109 @@
   window.__activateButtonForKey = activateButtonForKey; window.__hotkeyMap = KEY_TO_TITLE; window.__simulateUserClick = simulateUserClick; window.__toggleDarkTheme = toggleDarkTheme; window.__isDarkThemeEnabled = isDarkThemeEnabled;
 
   // ---------- ELDAutoCheck UI & AUTOMATION (optimized) ----------
-  let cachedSelectAllButton = null;
-  function findSelectAllButton() { if (cachedSelectAllButton && document.contains(cachedSelectAllButton)) return cachedSelectAllButton; cachedSelectAllButton = document.querySelector('button.btn.btn-info.btn-sm.mr-1'); return cachedSelectAllButton; }
+  function findClearSelectionButton() {
+    const buttons = Array.from(document.querySelectorAll('button'));
+    return buttons.find(b => (b.textContent || '').trim().toLowerCase().includes('clear selection')) || null;
+  }
+
+  function findSelectAllButton() {
+    const buttons = Array.from(document.querySelectorAll('button'));
+    return buttons.find(b => (b.textContent || '').trim().toLowerCase().includes('select all')) || null;
+  }
 
   function createButton() {
-    if (document.getElementById('myButton')) return;
-    const button = document.createElement('button');
-    button.id = 'myButton';
-    button.innerText = 'Auto-Check HOS';
-    Object.assign(button.style, { padding: '8px 16px', backgroundColor: '#4CAF50', color: 'white', border: 'none', borderRadius: '5px', cursor: 'pointer', marginRight: '5px' });
-
-    const clearSelectionButton = document.querySelector('button.btn.btn-warning.btn-sm.mr-1');
-    if (clearSelectionButton) clearSelectionButton.insertAdjacentElement('afterend', button); else document.body.appendChild(button);
-
-    button.addEventListener('click', () => {
-      const checkboxesToCheck = ['Generate Automatic Meta Data','Recreate Intermediate Events','Calculate Coordinates Based on Moving Events','Fix Certify Events','Fix Assigned and Fleet Edited Events','Auto-Check HOS'];
-      const selectAllButton = findSelectAllButton();
-      if (selectAllButton && selectAllButton.textContent.trim() === 'Select all') selectAllButton.click();
-
-      // schedule heavy work in idle time and batch it to avoid blocking
-      runWhenIdle(() => {
-        const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]'));
-        const tasks = [];
-        checkboxes.forEach((checkbox, index) => {
-          let labelText = '';
-          const label = checkbox.closest('div')?.querySelector('label') || document.querySelector(`label[for="${checkbox.id}"]`);
-          if (label) labelText = label.textContent.trim(); else labelText = checkbox.nextSibling ? checkbox.nextSibling.textContent.trim() : '';
-          const shouldCheck = checkboxesToCheck.some(text => labelText.includes(text));
-          if (shouldCheck && !checkbox.checked) tasks.push({checkbox, labelText});
-        });
-
-        // process in small batches
-        const BATCH = 20;
-        let i = 0;
-        function processBatch() {
-          const end = Math.min(i + BATCH, tasks.length);
-          for (; i < end; i++) {
-            const {checkbox, labelText} = tasks[i];
-            checkbox.focus();
-            const ev = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
-            checkbox.dispatchEvent(ev);
-          }
-          if (i < tasks.length) setTimeout(processBatch, 50); // yield to main thread
-        }
-        processBatch();
-      });
-    });
-  }
-
-  function removeButton() { const b = document.getElementById('myButton'); if (b) b.remove(); }
-
-  // smarter detection: try to find a panel root that contains any of the known labels
-  const NORMALIZE_LABELS = ['Generate Automatic Meta Data','Recreate Intermediate Events','Calculate Coordinates Based on Moving Events','Fix Certify Events','Fix Assigned and Fleet Edited Events'];
-
-  function findNormalizePanelRoot() {
-    const allLabels = Array.from(document.querySelectorAll('label'));
-    for (const lbl of allLabels) {
-      const text = (lbl.textContent || '').trim();
-      if (NORMALIZE_LABELS.some(s => text.includes(s))) {
-        return lbl.closest('div')?.closest('.panel, .card, [role="region"], .container') || lbl.closest('div');
-      }
+    const clearSelectionButton = findClearSelectionButton();
+    if (!clearSelectionButton) {
+      removeButton();
+      return;
     }
-    return null;
+
+    let button = document.getElementById('myButton');
+    if (!button) {
+      button = document.createElement('button');
+      button.id = 'myButton';
+      button.type = 'button';
+      button.innerText = 'Auto-Check HOS';
+      button.className = 'btn btn-success btn-sm';
+      Object.assign(button.style, {
+        padding: '4px 10px',
+        backgroundColor: '#28a745',
+        color: '#ffffff',
+        border: 'none',
+        borderRadius: '4px',
+        cursor: 'pointer',
+        marginLeft: '4px'
+      });
+
+      button.addEventListener('click', () => {
+        const checkboxesToCheck = [
+          'Generate Automatic Meta Data',
+          'Recreate Intermediate Events',
+          'Calculate Coordinates Based on Moving Events',
+          'Fix Certify Events',
+          'Fix Assigned and Fleet Edited Events',
+          'Auto-Check HOS'
+        ];
+        const selectAllButton = findSelectAllButton();
+        if (selectAllButton) {
+          const txt = (selectAllButton.textContent || '').trim().toLowerCase();
+          if (txt.includes('select all')) selectAllButton.click();
+        }
+
+        // schedule heavy work in idle time and batch it to avoid blocking
+        runWhenIdle(() => {
+          const checkboxes = Array.from(document.querySelectorAll('input[type="checkbox"]'));
+          const tasks = [];
+          checkboxes.forEach((checkbox) => {
+            if (checkbox.disabled) return;
+            let labelText = '';
+            const label = checkbox.closest('div')?.querySelector('label') || document.querySelector(`label[for="${checkbox.id}"]`);
+            if (label) labelText = label.textContent.trim(); else labelText = checkbox.nextSibling ? checkbox.nextSibling.textContent.trim() : '';
+            const shouldCheck = checkboxesToCheck.some(text => labelText.includes(text));
+            if (shouldCheck && !checkbox.checked) tasks.push({ checkbox, labelText });
+          });
+
+          // process in small batches
+          const BATCH = 20;
+          let i = 0;
+          function processBatch() {
+            const end = Math.min(i + BATCH, tasks.length);
+            for (; i < end; i++) {
+              const { checkbox } = tasks[i];
+              if (checkbox.disabled) continue;
+              checkbox.focus();
+              const ev = new MouseEvent('click', { bubbles: true, cancelable: true, view: window });
+              checkbox.dispatchEvent(ev);
+            }
+            if (i < tasks.length) setTimeout(processBatch, 50); // yield to main thread
+          }
+          processBatch();
+        });
+      });
+    }
+
+    // strictly place right next to Clear selection button
+    if (clearSelectionButton.nextElementSibling !== button) {
+      clearSelectionButton.insertAdjacentElement('afterend', button);
+    }
   }
 
-  function isNormalizeToolVisible(root) {
-    const scope = root || document;
-    const boxes = scope.querySelectorAll ? scope.querySelectorAll('input[type="checkbox"]') : [];
+  function removeButton() {
+    const b = document.getElementById('myButton');
+    if (b) b.remove();
+  }
+
+  const NORMALIZE_LABELS = [
+    'Generate Automatic Meta Data',
+    'Recreate Intermediate Events',
+    'Calculate Coordinates Based on Moving Events',
+    'Fix Certify Events',
+    'Fix Assigned and Fleet Edited Events'
+  ];
+
+  function isNormalizeToolVisible() {
+    if (findClearSelectionButton()) return true;
+    const boxes = document.querySelectorAll('input[type="checkbox"]');
     for (const checkbox of boxes) {
       const label = checkbox.closest('div')?.querySelector('label') || document.querySelector(`label[for="${checkbox.id}"]`);
       const text = label ? (label.textContent || '').trim() : (checkbox.nextSibling ? (checkbox.nextSibling.textContent || '').trim() : '');
@@ -442,22 +478,29 @@
 
   // Debounced observer using requestIdleCallback fallback
   function monitorNormalizeTool() {
-    let panelRoot = findNormalizePanelRoot() || document.body;
     let scheduled = null;
+    const check = () => {
+      scheduled = null;
+      if (isNormalizeToolVisible()) {
+        createButton();
+      } else {
+        removeButton();
+      }
+    };
+
     const onMutations = () => {
       if (scheduled) return; // debounce
-      const run = () => {
-        scheduled = null;
-        panelRoot = panelRoot && document.contains(panelRoot) ? panelRoot : (findNormalizePanelRoot() || document.body);
-        if (isNormalizeToolVisible(panelRoot)) createButton(); else removeButton();
-      };
-      if (window.requestIdleCallback) scheduled = requestIdleCallback(run, { timeout: 500 }); else scheduled = setTimeout(run, 200);
+      if (window.requestIdleCallback) {
+        scheduled = requestIdleCallback(check, { timeout: 300 });
+      } else {
+        scheduled = setTimeout(check, 150);
+      }
     };
 
     const observer = new MutationObserver(onMutations);
-    observer.observe(panelRoot === document.body ? document.body : panelRoot, { childList: true, subtree: panelRoot === document.body });
+    observer.observe(document.body, { childList: true, subtree: true });
     // initial check
-    onMutations();
+    check();
   }
 
   let normalizeMonitored = false;
