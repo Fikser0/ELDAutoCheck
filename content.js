@@ -77,6 +77,71 @@
     document.addEventListener('DOMContentLoaded', () => applyDarkTheme(isDarkThemeEnabled()), { once: true });
   }
 
+  // ---------- SUPPRESS UNIDENTIFIED EVENTS TOASTS ----------
+  function injectToastSuppressionStyle() {
+    try {
+      if (document.getElementById('eld-suppress-toasts-style')) return;
+      const style = document.createElement('style');
+      style.id = 'eld-suppress-toasts-style';
+      style.textContent = `
+        .ngx-toastr:has(.toast-message[aria-label*="Unidentified events" i]),
+        div[toast-component]:has([aria-label*="Unidentified events" i]) {
+          display: none !important;
+          visibility: hidden !important;
+          opacity: 0 !important;
+          pointer-events: none !important;
+          width: 0 !important;
+          height: 0 !important;
+          overflow: hidden !important;
+        }
+      `;
+      (document.head || document.documentElement).appendChild(style);
+    } catch (e) {}
+  }
+
+  function removeUnidentifiedToasts(root = document) {
+    try {
+      const scope = root && root.querySelectorAll ? root : document;
+      const toasts = scope.querySelectorAll('.ngx-toastr, [toast-component]');
+      for (const toast of toasts) {
+        const msgEl = toast.querySelector('.toast-message');
+        const text = ((msgEl ? (msgEl.getAttribute('aria-label') || msgEl.textContent) : toast.textContent) || '').toLowerCase();
+        if (text.includes('unidentified events')) {
+          toast.style.setProperty('display', 'none', 'important');
+          toast.style.setProperty('pointer-events', 'none', 'important');
+          toast.remove();
+        }
+      }
+    } catch (e) {}
+  }
+
+  let toastObserverStarted = false;
+  function startToastSuppression() {
+    injectToastSuppressionStyle();
+    if (toastObserverStarted) return;
+    const target = document.body || document.documentElement;
+    if (!target) return;
+    toastObserverStarted = true;
+    removeUnidentifiedToasts();
+    const obs = new MutationObserver((mutations) => {
+      for (const m of mutations) {
+        if (m.addedNodes && m.addedNodes.length > 0) {
+          removeUnidentifiedToasts();
+          break;
+        }
+      }
+    });
+    obs.observe(target, { childList: true, subtree: true });
+  }
+
+  injectToastSuppressionStyle();
+  if (document.readyState === 'complete' || document.readyState === 'interactive') {
+    startToastSuppression();
+  } else {
+    document.addEventListener('DOMContentLoaded', startToastSuppression, { once: true });
+    window.addEventListener('load', startToastSuppression, { once: true });
+  }
+
   // ---------- CONFIG ----------
   const DEBUG = false; // set true for verbose hotkey logs (then reload extension)
   const HOTKEY_CHECK_INTERVAL_MS = 10000; // how often to ensure listeners (10s)

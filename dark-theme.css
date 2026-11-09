@@ -164,3 +164,15 @@ html.eld-dark-theme ::-webkit-scrollbar-thumb {
 html.eld-dark-theme ::-webkit-scrollbar-thumb:hover {
   background: #52525b;
 }
+
+/* 10. Suppress "Unidentified events" warning toasts so they never render or block clicks */
+.ngx-toastr:has(.toast-message[aria-label*="Unidentified events" i]),
+div[toast-component]:has([aria-label*="Unidentified events" i]) {
+  display: none !important;
+  visibility: hidden !important;
+  opacity: 0 !important;
+  pointer-events: none !important;
+  width: 0 !important;
+  height: 0 !important;
+  overflow: hidden !important;
+}
